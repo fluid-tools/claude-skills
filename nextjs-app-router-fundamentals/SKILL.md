@@ -1,14 +1,48 @@
 ---
 name: nextjs-app-router-fundamentals
-description: Guide for working with Next.js App Router (Next.js 13+). Use when migrating from Pages Router to App Router, creating layouts, implementing routing, handling metadata, or building Next.js 13+ applications. Activates for App Router migration, layout creation, routing patterns, or Next.js 13+ development tasks.
+description: Guide for working with Next.js App Router (Next.js 16+). Use when migrating from Pages Router to App Router, creating layouts, implementing routing, handling metadata, using Cache Components with "use cache" directive, or building Next.js 16+ applications. Activates for App Router migration, layout creation, routing patterns, caching strategies, or Next.js 16+ development tasks.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
-# Next.js App Router Fundamentals
+# Next.js App Router Fundamentals (Next.js 16)
 
 ## Overview
 
-Provide comprehensive guidance for Next.js App Router (Next.js 13+), covering migration from Pages Router, file-based routing conventions, layouts, metadata handling, and modern Next.js patterns.
+Provide comprehensive guidance for Next.js App Router (Next.js 16+), covering migration from Pages Router, file-based routing conventions, layouts, metadata handling, Cache Components with the `"use cache"` directive, React Compiler integration, and modern Next.js patterns.
+
+## What's New in Next.js 16
+
+### Key Changes from Next.js 15
+
+1. **Cache Components are stable** - `cacheComponents: true` enables `"use cache"` directive
+2. **React Compiler is stable** - `reactCompiler: true` enables automatic memoization
+3. **Turbopack is default** - 2-5x faster builds, 10x faster Fast Refresh
+4. **`proxy.ts` replaces `middleware.ts`** - Clearer naming for routing layer
+5. **Async params/searchParams are mandatory** - Must always use `await` and Promise types
+6. **`next lint` removed** - Use Biome or ESLint directly
+7. **New cache APIs** - `cacheLife`, `cacheTag`, `updateTag`, `refresh`
+
+### Enabling Next.js 16 Features
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  // Cache Components - enables "use cache" directive
+  cacheComponents: true,
+
+  // React Compiler - automatic memoization (stable but not default)
+  reactCompiler: true,
+
+  // Turbopack options (now stable, moved from experimental)
+  turbopack: {
+    // Custom turbopack options if needed
+  },
+}
+
+export default nextConfig
+```
 
 ## TypeScript: NEVER Use `any` Type
 
@@ -26,12 +60,26 @@ function handleSubmit(e: React.FormEvent<HTMLFormElement>) { ... }
 const data: string[] = [];
 ```
 
-### Common Next.js Type Patterns
+### Common Next.js 16 Type Patterns
 
 ```typescript
-// Page props
-function Page({ params }: { params: { slug: string } }) { ... }
-function Page({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) { ... }
+// Page props - CRITICAL: params and searchParams are NOW PROMISES in Next.js 16
+async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  // ...
+}
+
+async function Page({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const query = await searchParams;
+  // ...
+}
+
+// Or use the new type helpers (run `npx next typegen` first):
+async function Page(props: PageProps<'/blog/[slug]'>) {
+  const { slug } = await props.params;
+  const query = await props.searchParams;
+  // ...
+}
 
 // Form events
 const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => { ... }
@@ -45,11 +93,13 @@ async function myAction(formData: FormData) { ... }
 
 Use this skill when:
 - Migrating from Pages Router (`pages/` directory) to App Router (`app/` directory)
-- Creating Next.js 13+ applications from scratch
+- Creating Next.js 16+ applications from scratch
 - Working with layouts, templates, and nested routing
 - Implementing metadata and SEO optimizations
 - Building with App Router routing conventions
+- Using Cache Components with `"use cache"` directive
 - Handling route groups, parallel routes, or intercepting routes basics
+- Configuring React Compiler for automatic optimization
 
 ## Core Concepts
 
@@ -66,7 +116,7 @@ pages/
     └── hello.ts           # API endpoint: /api/hello
 ```
 
-**App Router (Modern - Next.js 13+):**
+**App Router (Modern - Next.js 16+):**
 ```
 app/
 ├── layout.tsx             # Root layout (required)
@@ -80,6 +130,7 @@ app/
 └── api/                   # Route handlers
     └── hello/
         └── route.ts       # API endpoint: /api/hello
+proxy.ts                   # Routing proxy (replaces middleware.ts)
 ```
 
 ### File Conventions
@@ -92,6 +143,10 @@ app/
 - `not-found.tsx` - 404 UI
 - `template.tsx` - Similar to layout but re-renders on navigation
 - `route.ts` - API endpoints (Route Handlers)
+- `default.tsx` - Required fallback for parallel route slots (new requirement in Next.js 16)
+
+**Root Level Files:**
+- `proxy.ts` - Routing proxy (replaces deprecated `middleware.ts`)
 
 **Colocation:**
 - Components, tests, and other files can be colocated in `app/`
