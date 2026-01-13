@@ -1,6 +1,6 @@
 ---
 name: vercel-ai-sdk
-description: Guide for Vercel AI SDK v5 implementation patterns including generateText, streamText, useChat hook, tool calling, embeddings, and MCP integration. Use when implementing AI chat interfaces, streaming responses, tool/function calling, text embeddings, or working with convertToModelMessages and toUIMessageStreamResponse. Activates for AI SDK integration, useChat hook usage, message streaming, or tool calling tasks.
+description: Guide for Vercel AI SDK v6 implementation patterns including generateText, streamText, ToolLoopAgent, structured output with Output helpers, useChat hook, tool calling, embeddings, middleware, and MCP integration. Use when implementing AI chat interfaces, streaming responses, agentic applications, tool/function calling, text embeddings, workflow patterns, or working with convertToModelMessages and toUIMessageStreamResponse. Activates for AI SDK integration, useChat hook usage, message streaming, agent development, or tool calling tasks.
 allowed-tools:
   - Read
   - Write
@@ -11,17 +11,21 @@ allowed-tools:
   - WebFetch
 ---
 
-# Vercel AI SDK v5 Implementation Guide
+# Vercel AI SDK v6 Implementation Guide
 
 ## When to Use This Skill
 
 Use this skill when:
 - Implementing AI chat interfaces with `useChat` hook
 - Creating API routes that generate or stream AI responses
+- Building agentic applications with `ToolLoopAgent`
 - Adding tool calling / function calling capabilities
+- Generating structured output with `Output.object()`, `Output.array()`, etc.
 - Generating text embeddings for semantic search or RAG
-- Migrating from AI SDK v4 to v5
+- Migrating from AI SDK v5 to v6
 - Integrating Model Context Protocol (MCP) servers
+- Implementing middleware for caching, logging, or guardrails
+- Building workflow patterns (sequential, parallel, routing, etc.)
 - Working with streaming responses or message persistence
 
 ## Structured Implementation Workflow
@@ -30,10 +34,11 @@ Use this skill when:
   <step id="1" name="verify-requirements">
     <description>Understand the task requirements</description>
     <actions>
-      - Identify what AI functionality is needed (chat, generation, tools, embeddings)
+      - Identify what AI functionality is needed (chat, generation, agents, tools, embeddings)
       - Determine if client-side (useChat) or server-side (API route) implementation
       - Check if streaming or non-streaming response is required
-      - Verify model provider (OpenAI, Anthropic, etc.)
+      - Verify model provider (Anthropic, OpenAI, etc.)
+      - Determine if structured output is needed (Output.object, Output.array, etc.)
     </actions>
   </step>
 
@@ -47,12 +52,14 @@ Use this skill when:
   </step>
 
   <step id="3" name="implement">
-    <description>Implement using correct v5 patterns</description>
+    <description>Implement using correct v6 patterns</description>
     <actions>
-      - Use string-based model specification ('provider/model-id')
+      - Use provider function model specification: anthropic('claude-sonnet-4-5-20250929')
       - For chat: use sendMessage (not append), parts-based messages
       - For tools: MUST import and use tool() helper from 'ai', MUST use inputSchema (NOT parameters), MUST use zod
+      - For structured output: use Output.object(), Output.array(), Output.choice(), Output.json()
       - For streaming: use toUIMessageStreamResponse() or toTextStreamResponse()
+      - For agents: use ToolLoopAgent class with createAgentUIStreamResponse()
       - For embeddings: use provider.textEmbeddingModel()
     </actions>
   </step>
@@ -96,7 +103,8 @@ Use this skill when:
       - ai (core AI SDK)
       - @ai-sdk/openai (OpenAI provider)
       - @ai-sdk/anthropic (Anthropic provider)
-      - @modelcontextprotocol/sdk (MCP integration)
+      - @ai-sdk/mcp (MCP integration)
+      - @modelcontextprotocol/sdk (MCP client SDK)
       - zod (for tool schemas)
     </critical>
   </step>
@@ -127,7 +135,7 @@ Use this skill when:
     <description>Run tests and debug ALL failures until they pass</description>
     <actions>
       - Run: npm run test (or bun run test)
-      - If tests fail, read the FULL error message carefully
+      - If tests fail, read the FULL test error message carefully
       - Debug the failure:
         * Check what the test expects vs what you're providing
         * Look at test assertions
@@ -205,26 +213,26 @@ When you encounter "Module not found" errors:
 
 2. **Identify the package** from the import statement
    ```
-   Error: Cannot find module '@ai-sdk/openai'
-   Import: import { openai } from '@ai-sdk/openai'
-   Package needed: @ai-sdk/openai
+   Error: Cannot find module '@ai-sdk/anthropic'
+   Import: import { anthropic } from '@ai-sdk/anthropic'
+   Package needed: @ai-sdk/anthropic
    ```
 
 3. **Install with the CORRECT package manager**
    ```bash
    # If pnpm-lock.yaml exists (MOST COMMON for Next.js evals):
-   pnpm install @ai-sdk/openai
+   pnpm install @ai-sdk/anthropic
    # or
-   pnpm add @ai-sdk/openai
+   pnpm add @ai-sdk/anthropic
 
    # If package-lock.json exists:
-   npm install @ai-sdk/openai
+   npm install @ai-sdk/anthropic
 
    # If yarn.lock exists:
-   yarn add @ai-sdk/openai
+   yarn add @ai-sdk/anthropic
 
    # If bun.lockb exists:
-   bun install @ai-sdk/openai
+   bun install @ai-sdk/anthropic
    ```
 
 4. **Re-run build** to verify
@@ -276,6 +284,57 @@ Task is ONLY complete when:
 
 **NEVER stop at "code is correct" - achieve FULL PASSING status!**
 
+## ⚠️ CRITICAL v6 CHANGES: Structured Output
+
+**In v6, `generateObject` and `streamObject` are DEPRECATED.** Use `generateText`/`streamText` with `Output` helpers instead.
+
+### ❌ WRONG - Deprecated v5 Pattern
+
+```typescript
+// DO NOT USE - DEPRECATED in v6
+import { generateObject } from 'ai';
+
+const result = await generateObject({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  schema: z.object({
+    sentiment: z.enum(['positive', 'neutral', 'negative']),
+  }),
+  prompt: 'Analyze sentiment',
+});
+```
+
+### ✅ CORRECT - v6 Output Pattern
+
+```typescript
+import { generateText, Output } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { z } from 'zod';
+
+const { output } = await generateText({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  output: Output.object({
+    schema: z.object({
+      sentiment: z.enum(['positive', 'neutral', 'negative']),
+      topics: z.array(z.string()),
+    }),
+  }),
+  prompt: 'Analyze this feedback...',
+});
+
+// Access typed output
+console.log(output.sentiment); // 'positive' | 'neutral' | 'negative'
+console.log(output.topics); // string[]
+```
+
+### Output Helper Types
+
+| Helper | Purpose | Example |
+|--------|---------|---------|
+| `Output.object()` | Generate typed object | `Output.object({ schema: z.object({...}) })` |
+| `Output.array()` | Generate typed array | `Output.array({ schema: z.string() })` |
+| `Output.choice()` | Generate enum value | `Output.choice({ choices: ['A', 'B', 'C'] })` |
+| `Output.json()` | Unstructured JSON | `Output.json()` |
+
 ## ⚠️ CRITICAL: Tool Calling API - MUST USE tool() Helper
 
 **When implementing tool calling, you MUST use the `tool()` helper function from the 'ai' package.**
@@ -289,7 +348,7 @@ import { z } from 'zod';
 tools: {
   myTool: {
     description: 'My tool',
-    parameters: z.object({...}),  // ❌ WRONG - "parameters" doesn't exist in v5
+    parameters: z.object({...}),  // ❌ WRONG - "parameters" doesn't exist in v6
     execute: async ({...}) => {...},
   }
 }
@@ -323,11 +382,87 @@ Before implementing any tool, verify:
 - [ ] Defined `execute` function with async callback
 - [ ] Added `description` string for the tool
 
-## ⚠️ CRITICAL: Common v4 to v5 Breaking Changes
+## ⚠️ NEW in v6: ToolLoopAgent for Agentic Applications
+
+### Agent Definition
+
+```typescript
+import { ToolLoopAgent, tool, stepCountIs } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { z } from 'zod';
+
+const myAgent = new ToolLoopAgent({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  instructions: 'You are a helpful assistant that can search and analyze data.',
+  tools: {
+    getData: tool({
+      description: 'Fetch data from API',
+      inputSchema: z.object({
+        query: z.string(),
+      }),
+      execute: async ({ query }) => {
+        // Implement data fetching
+        return { result: 'data for ' + query };
+      },
+    }),
+    analyzeData: tool({
+      description: 'Analyze fetched data',
+      inputSchema: z.object({
+        data: z.string(),
+      }),
+      execute: async ({ data }) => {
+        return { analysis: 'Analysis of ' + data };
+      },
+    }),
+  },
+  stopWhen: stepCountIs(20), // Stop after 20 steps max
+});
+
+// Non-streaming execution
+const { text, toolCalls } = await myAgent.generate({ prompt: 'Find and analyze user data' });
+
+// Streaming execution
+const stream = myAgent.stream({ prompt: 'Find and analyze user data' });
+for await (const chunk of stream) {
+  // Handle streaming chunks
+}
+```
+
+### Agent API Route Integration
+
+```typescript
+// app/api/agent/route.ts
+import { createAgentUIStreamResponse } from 'ai';
+import { myAgent } from '@/agents/my-agent';
+
+export async function POST(request: Request) {
+  const { messages } = await request.json();
+
+  return createAgentUIStreamResponse({
+    agent: myAgent,
+    uiMessages: messages,
+  });
+}
+```
+
+### Agent Configuration Options
+
+| Parameter | Purpose | Example |
+|-----------|---------|---------|
+| `model` | AI model to use | `anthropic('claude-sonnet-4-5-20250929')` |
+| `instructions` | System prompt | `'You are a helpful assistant.'` |
+| `tools` | Available tools | `{ toolName: tool({...}) }` |
+| `stopWhen` | Termination condition | `stepCountIs(20)` |
+| `toolChoice` | Tool usage mode | `'auto'`, `'required'`, `'none'` |
+| `output` | Structured output schema | `Output.object({...})` |
+| `prepareStep` | Dynamic per-step adjustments | Function returning step config |
+| `prepareCall` | Runtime options injection | Async function for RAG, etc. |
+
+## ⚠️ CRITICAL: Common v5 to v6 Breaking Changes
 
 ### 1. useChat Hook Changes
 
-**❌ WRONG (v4 pattern):**
+**❌ WRONG (v5 pattern):**
 ```typescript
 const { messages, input, setInput, append } = useChat();
 
@@ -335,23 +470,26 @@ const { messages, input, setInput, append } = useChat();
 append({ content: text, role: 'user' });
 ```
 
-**✅ CORRECT (v5 pattern):**
+**✅ CORRECT (v6 pattern):**
 ```typescript
-const { messages, sendMessage } = useChat();
+const { messages, sendMessage, status, addToolOutput } = useChat();
 const [input, setInput] = useState('');
 
 // Sending message
 sendMessage({ text: input });
+
+// New in v6: Handle tool outputs
+addToolOutput({ toolCallId: 'xxx', result: { ... } });
 ```
 
 ### 2. Message Structure
 
-**❌ WRONG (v4 simple content):**
+**❌ WRONG (v5 simple content):**
 ```typescript
 <div>{message.content}</div>
 ```
 
-**✅ CORRECT (v5 parts-based):**
+**✅ CORRECT (v6 parts-based):**
 ```typescript
 <div>
   {message.parts.map((part, index) =>
@@ -360,27 +498,29 @@ sendMessage({ text: input });
 </div>
 ```
 
-### 3. Model Specification
+### 3. Response Methods
 
-**✅ PREFER: String-based (v5 recommended):**
+**❌ WRONG (v5):**
 ```typescript
-import { generateText } from 'ai';
-
-const result = await generateText({
-  model: 'openai/gpt-4o',  // String format
-  prompt: 'Hello',
-});
+return result.toDataStreamResponse();
 ```
 
-**✅ ALSO WORKS: Function-based (legacy support):**
+**✅ CORRECT (v6):**
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+return result.toUIMessageStreamResponse();
+```
 
-const result = await generateText({
-  model: openai('gpt-4o'),  // Function format
-  prompt: 'Hello',
-});
+### 4. Model Specification
+
+```typescript
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
+
+// Use provider functions
+model: anthropic('claude-sonnet-4-5-20250929')
+model: anthropic('claude-opus-4-20250514')
+model: openai('gpt-4o')
+model: openai('gpt-4o-mini')
 ```
 
 ## Core API Reference
@@ -391,14 +531,16 @@ const result = await generateText({
 
 **Signature:**
 ```typescript
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 
 const result = await generateText({
-  model: 'openai/gpt-4o',           // String format: 'provider/model-id'
-  prompt: 'Your prompt here',        // User input
-  system: 'Optional system message', // Optional system instructions
-  tools?: { ... },                   // Optional tool calling
-  maxSteps?: 5,                      // For multi-step tool calling
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  prompt: 'Your prompt here',
+  system: 'Optional system message',
+  tools?: { ... },
+  maxSteps?: 5,
+  output?: Output.object({ schema: z.object({...}) }),
 });
 ```
 
@@ -406,6 +548,7 @@ const result = await generateText({
 ```typescript
 {
   text: string;              // Generated text output
+  output?: T;                // Typed structured output (if Output specified)
   toolCalls: ToolCall[];     // Tool invocations made
   finishReason: string;      // Why generation stopped
   usage: TokenUsage;         // Token consumption
@@ -418,10 +561,11 @@ const result = await generateText({
 ```typescript
 // app/api/generate/route.ts
 import { generateText } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 
 export async function GET() {
   const result = await generateText({
-    model: 'anthropic/claude-4-sonnet',
+    model: anthropic('claude-sonnet-4-5-20250929'),
     prompt: 'Why is the sky blue?',
   });
 
@@ -436,13 +580,16 @@ export async function GET() {
 **Signature:**
 ```typescript
 import { streamText } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 
 const result = streamText({
-  model: 'openai/gpt-4o',
+  model: anthropic('claude-sonnet-4-5-20250929'),
   prompt: 'Your prompt here',
   system: 'Optional system message',
-  messages?: ModelMessage[],  // For chat history
+  messages?: ModelMessage[],
   tools?: { ... },
+  onChunk?: (chunk) => { ... },
+  onStepFinish?: (step) => { ... },
   onFinish?: async (result) => { ... },
   onError?: async (error) => { ... },
 });
@@ -461,13 +608,14 @@ result.toTextStreamResponse();
 ```typescript
 // app/api/chat/route.ts
 import { streamText, convertToModelMessages } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import type { UIMessage } from 'ai';
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: anthropic('claude-sonnet-4-5-20250929'),
     system: 'You are a helpful assistant.',
     messages: convertToModelMessages(messages),
   });
@@ -482,7 +630,7 @@ export async function POST(req: Request) {
 
 **Signature:**
 ```typescript
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 
 const {
   messages,        // Array of UIMessage with parts-based structure
@@ -492,11 +640,18 @@ const {
   regenerate,      // Reprocess last message
   setMessages,     // Manually modify history
   error,           // Error object if request fails
-  reload,          // Retry after error
+  clearError,      // Clear error state
+  addToolOutput,   // Submit tool results (NEW in v6)
+  resumeStream,    // Resume interrupted stream (NEW in v6)
 } = useChat({
-  api: '/api/chat',  // API endpoint
+  api: '/api/chat',
+  id?: 'chat-id',
+  messages?: initialMessages,
+  onToolCall?: async (toolCall) => { ... },
   onFinish?: (message) => { ... },
   onError?: (error) => { ... },
+  sendAutomaticallyWhen?: (messages) => boolean,
+  resume?: true,
 });
 ```
 
@@ -504,11 +659,19 @@ const {
 ```typescript
 'use client';
 
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { useState } from 'react';
 
 export default function ChatPage() {
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status, addToolOutput } = useChat({
+    onToolCall: async ({ toolCall }) => {
+      // Handle client-side tool execution
+      if (toolCall.name === 'confirm') {
+        const result = await showConfirmDialog(toolCall.args);
+        addToolOutput({ toolCallId: toolCall.id, result });
+      }
+    },
+  });
   const [input, setInput] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -525,11 +688,16 @@ export default function ChatPage() {
         {messages.map((message) => (
           <div key={message.id}>
             <strong>{message.role}:</strong>
-            {message.parts.map((part, index) =>
-              part.type === 'text' ? (
-                <span key={index}>{part.text}</span>
-              ) : null
-            )}
+            {message.parts.map((part, index) => {
+              switch (part.type) {
+                case 'text':
+                  return <span key={index}>{part.text}</span>;
+                case 'tool-call':
+                  return <div key={index}>Tool: {part.name}</div>;
+                default:
+                  return null;
+              }
+            })}
           </div>
         ))}
       </div>
@@ -565,12 +733,14 @@ const weatherTool = tool({
     location: z.string().describe('The location to get the weather for'),
     unit: z.enum(['C', 'F']).describe('Temperature unit'),
   }),
+  outputSchema: z.object({
+    temperature: z.number(),
+    condition: z.string(),
+  }),
   execute: async ({ location, unit }) => {
     // Fetch or mock weather data
     return {
-      location,
       temperature: 24,
-      unit,
       condition: 'Sunny',
     };
   },
@@ -581,6 +751,7 @@ const weatherTool = tool({
 ```typescript
 // app/api/chat/route.ts
 import { streamText, convertToModelMessages, tool } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import type { UIMessage } from 'ai';
 
@@ -588,7 +759,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: anthropic('claude-sonnet-4-5-20250929'),
     messages: convertToModelMessages(messages),
     tools: {
       getWeather: tool({
@@ -598,11 +769,12 @@ export async function POST(req: Request) {
           unit: z.enum(['C', 'F']).describe('The unit to display the temperature in'),
         }),
         execute: async ({ city, unit }) => {
-          // Mock response
+          // API call or mock data
           return `It is currently 24°${unit} and Sunny in ${city}!`;
         },
       }),
     },
+    toolChoice: 'auto', // 'auto' | 'required' | 'none' | { type: 'tool', toolName: 'xxx' }
   });
 
   return result.toUIMessageStreamResponse();
@@ -612,7 +784,7 @@ export async function POST(req: Request) {
 **Multi-Step Tool Calling:**
 ```typescript
 const result = await generateText({
-  model: 'openai/gpt-4o',
+  model: anthropic('claude-sonnet-4-5-20250929'),
   tools: {
     weather: weatherTool,
     search: searchTool,
@@ -628,12 +800,19 @@ const result = await generateText({
 
 **Signature:**
 ```typescript
-import { embed } from 'ai';
+import { embed, embedMany } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
+// Single embedding
 const result = await embed({
   model: openai.textEmbeddingModel('text-embedding-3-small'),
   value: 'Text to embed',
+});
+
+// Batch embeddings
+const batchResult = await embedMany({
+  model: openai.textEmbeddingModel('text-embedding-3-small'),
+  values: ['Text 1', 'Text 2', 'Text 3'],
 });
 ```
 
@@ -652,31 +831,165 @@ const result = await embed({
 import { embed } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
-export async function GET() {
+export async function POST(req: Request) {
+  const { text } = await req.json();
+
   const { embedding, usage } = await embed({
     model: openai.textEmbeddingModel('text-embedding-3-small'),
-    value: 'sunny day at the beach',
+    value: text,
   });
 
   return Response.json({ embedding, usage });
 }
 ```
 
-**Batch Embeddings:**
-```typescript
-import { embedMany } from 'ai';
+### 6. Middleware
 
-const { embeddings, usage } = await embedMany({
-  model: openai.textEmbeddingModel('text-embedding-3-small'),
-  values: [
-    'sunny day at the beach',
-    'rainy afternoon in the city',
-    'snowy mountain landscape',
-  ],
+**Purpose:** Intercept and modify model behavior for logging, caching, guardrails, RAG, etc.
+
+**Built-in Middleware:**
+```typescript
+import {
+  extractReasoningMiddleware,
+  simulateStreamingMiddleware,
+  defaultSettingsMiddleware,
+  wrapLanguageModel
+} from 'ai';
+
+// Extract reasoning from models like Claude
+const modelWithReasoning = wrapLanguageModel({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  middleware: extractReasoningMiddleware({ tagName: 'thinking' }),
+});
+
+// Apply default settings
+const modelWithDefaults = wrapLanguageModel({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  middleware: defaultSettingsMiddleware({
+    temperature: 0.7,
+    maxOutputTokens: 1000,
+  }),
 });
 ```
 
-### 6. Message Utilities
+**Custom Middleware:**
+```typescript
+import { LanguageModelMiddleware, wrapLanguageModel } from 'ai';
+
+// Logging middleware
+const loggingMiddleware: LanguageModelMiddleware = {
+  transformParams: async ({ params }) => {
+    console.log('Request params:', params);
+    return params;
+  },
+  wrapGenerate: async ({ doGenerate, params }) => {
+    const result = await doGenerate();
+    console.log('Response:', result);
+    return result;
+  },
+};
+
+// Caching middleware
+const cache = new Map<string, string>();
+const cachingMiddleware: LanguageModelMiddleware = {
+  wrapGenerate: async ({ doGenerate, params }) => {
+    const cacheKey = JSON.stringify(params.prompt);
+    if (cache.has(cacheKey)) {
+      return { text: cache.get(cacheKey)! };
+    }
+    const result = await doGenerate();
+    cache.set(cacheKey, result.text);
+    return result;
+  },
+};
+
+// RAG middleware
+const ragMiddleware: LanguageModelMiddleware = {
+  transformParams: async ({ params }) => {
+    const relevantDocs = await vectorSearch(params.prompt);
+    return {
+      ...params,
+      prompt: `Context: ${relevantDocs}\n\nQuery: ${params.prompt}`,
+    };
+  },
+};
+
+// Apply multiple middleware
+const enhancedModel = wrapLanguageModel({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  middleware: [loggingMiddleware, cachingMiddleware, ragMiddleware],
+});
+```
+
+### 7. Model Context Protocol (MCP) Integration
+
+**Purpose:** Connect to external MCP servers for dynamic tool access.
+
+**Installation:**
+```bash
+bun add @ai-sdk/mcp @modelcontextprotocol/sdk
+```
+
+**HTTP Transport (Production):**
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { streamText } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+
+export async function POST(req: Request) {
+  const { prompt } = await req.json();
+
+  const httpTransport = new StreamableHTTPClientTransport(
+    new URL('https://mcp-server.example.com/mcp'),
+    { headers: { Authorization: `Bearer ${process.env.MCP_TOKEN}` } }
+  );
+
+  const mcpClient = await createMCPClient({ transport: httpTransport });
+
+  try {
+    const tools = await mcpClient.tools();
+
+    const response = streamText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      tools,
+      prompt,
+      onFinish: async () => {
+        await mcpClient.close();
+      },
+      onError: async () => {
+        await mcpClient.close();
+      },
+    });
+
+    return response.toTextStreamResponse();
+  } catch (error) {
+    await mcpClient.close();
+    return new Response('Internal Server Error', { status: 500 });
+  }
+}
+```
+
+**Stdio Transport (Development):**
+```typescript
+import { createMCPClient } from '@ai-sdk/mcp';
+import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp';
+
+const stdioTransport = new Experimental_StdioMCPTransport({
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed/dir'],
+});
+
+const mcpClient = await createMCPClient({ transport: stdioTransport });
+```
+
+**Key Points:**
+- Always close the client in `onFinish` and `onError`
+- Tools are fetched dynamically with `mcpClient.tools()`
+- Use HTTP/SSE for production, Stdio for development
+- Multiple MCP clients can be combined by merging tool collections
+
+### 8. Message Utilities
 
 **convertToModelMessages:**
 Converts UI messages from `useChat` into `ModelMessage` objects for AI functions.
@@ -689,95 +1002,179 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
-    messages: convertToModelMessages(messages),  // Convert for model
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    messages: convertToModelMessages(messages),
   });
 
   return result.toUIMessageStreamResponse();
 }
 ```
 
-### 7. Model Context Protocol (MCP) Integration
+## Workflow Patterns
 
-**Purpose:** Connect to external MCP servers for dynamic tool access.
+### 1. Sequential (Chain) Pattern
 
-**Example:**
 ```typescript
-// app/api/chat/route.ts
-import { experimental_createMCPClient, streamText } from 'ai';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+async function sequentialWorkflow(input: string) {
+  // Step 1: Generate initial content
+  const { text: draft } = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    prompt: `Write marketing copy for: ${input}`,
+  });
 
-export async function POST(req: Request) {
-  const { prompt }: { prompt: string } = await req.json();
+  // Step 2: Evaluate quality
+  const { output: evaluation } = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    output: Output.object({
+      schema: z.object({
+        score: z.number().min(1).max(10),
+        feedback: z.string(),
+      }),
+    }),
+    prompt: `Evaluate this copy: ${draft}`,
+  });
 
-  try {
-    // Connect to MCP server
-    const httpTransport = new StreamableHTTPClientTransport(
-      new URL('http://localhost:3000/mcp')
-    );
-
-    const httpClient = await experimental_createMCPClient({
-      transport: httpTransport,
+  // Step 3: Improve if needed
+  if (evaluation.score < 7) {
+    const { text: improved } = await generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      prompt: `Improve this copy based on feedback:\n\nCopy: ${draft}\n\nFeedback: ${evaluation.feedback}`,
     });
+    return improved;
+  }
 
-    // Fetch tools from MCP server
-    const tools = await httpClient.tools();
+  return draft;
+}
+```
 
-    const response = streamText({
-      model: 'openai/gpt-4o',
-      tools,
-      prompt,
-      onFinish: async () => {
-        await httpClient.close();  // Clean up
-      },
-      onError: async () => {
-        await httpClient.close();  // Clean up on error
-      },
-    });
+### 2. Parallel Pattern
 
-    return response.toTextStreamResponse();
-  } catch (error) {
-    return new Response('Internal Server Error', { status: 500 });
+```typescript
+async function parallelReview(code: string) {
+  const [securityReview, performanceReview, maintainabilityReview] = await Promise.all([
+    generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      prompt: `Review for security issues:\n\n${code}`,
+    }),
+    generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      prompt: `Review for performance issues:\n\n${code}`,
+    }),
+    generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      prompt: `Review for maintainability:\n\n${code}`,
+    }),
+  ]);
+
+  return {
+    security: securityReview.text,
+    performance: performanceReview.text,
+    maintainability: maintainabilityReview.text,
+  };
+}
+```
+
+### 3. Routing Pattern
+
+```typescript
+async function routeQuery(query: string) {
+  // Classify the query
+  const { output: classification } = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    output: Output.choice({
+      choices: ['technical', 'billing', 'general'] as const,
+    }),
+    prompt: `Classify this customer query: ${query}`,
+  });
+
+  // Route to appropriate handler
+  switch (classification) {
+    case 'technical':
+      return handleTechnicalQuery(query);
+    case 'billing':
+      return handleBillingQuery(query);
+    default:
+      return handleGeneralQuery(query);
   }
 }
 ```
 
-**Key Points:**
-- Use `experimental_createMCPClient` (note: experimental API)
-- Always close the client in `onFinish` and `onError`
-- Tools are fetched dynamically with `httpClient.tools()`
-- Requires `@modelcontextprotocol/sdk` package
-
-## Model Specification Patterns
-
-### String-Based (Recommended for v5)
+### 4. Orchestrator-Worker Pattern
 
 ```typescript
-// Format: 'provider/model-id'
-model: 'openai/gpt-4o'
-model: 'anthropic/claude-4-sonnet'
-model: 'google/gemini-2.0-flash'
+async function implementFeature(requirement: string) {
+  // Orchestrator: Break down the task
+  const { output: plan } = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    output: Output.object({
+      schema: z.object({
+        tasks: z.array(z.object({
+          type: z.enum(['frontend', 'backend', 'database']),
+          description: z.string(),
+        })),
+      }),
+    }),
+    prompt: `Break down this feature into tasks: ${requirement}`,
+  });
+
+  // Workers: Execute tasks in parallel
+  const results = await Promise.all(
+    plan.tasks.map(task =>
+      generateText({
+        model: anthropic('claude-sonnet-4-5-20250929'),
+        prompt: `Implement this ${task.type} task: ${task.description}`,
+      })
+    )
+  );
+
+  return results.map(r => r.text);
+}
 ```
 
-### Function-Based (Legacy Support)
+### 5. Evaluator-Optimizer Pattern
 
 ```typescript
-import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
+async function optimizeOutput(input: string, maxIterations = 3) {
+  let output = await generateText({
+    model: anthropic('claude-sonnet-4-5-20250929'),
+    prompt: input,
+  });
 
-model: openai('gpt-4o')
-model: anthropic('claude-4-sonnet')
+  for (let i = 0; i < maxIterations; i++) {
+    const { output: evaluation } = await generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      output: Output.object({
+        schema: z.object({
+          isGood: z.boolean(),
+          improvements: z.array(z.string()),
+        }),
+      }),
+      prompt: `Evaluate this output: ${output.text}`,
+    });
+
+    if (evaluation.isGood) break;
+
+    output = await generateText({
+      model: anthropic('claude-sonnet-4-5-20250929'),
+      prompt: `Improve based on: ${evaluation.improvements.join(', ')}\n\nOriginal: ${output.text}`,
+    });
+  }
+
+  return output.text;
+}
 ```
 
-### Embedding Models
+## Message Part Types (v6)
 
-```typescript
-import { openai } from '@ai-sdk/openai';
-
-// Text embeddings use a different method
-openai.textEmbeddingModel('text-embedding-3-small')
-openai.textEmbeddingModel('text-embedding-3-large')
-```
+| Part Type | Description | Properties |
+|-----------|-------------|------------|
+| `text` | Text content | `text`, `isStreaming` |
+| `tool-call` | Tool invocation | `name`, `args`, `state` ('input-streaming' | 'invoking' | 'output' | 'output-error') |
+| `reasoning` | Model thinking | `text`, `isStreaming` |
+| `file` | File attachment | `mediaType`, `url` or `data` |
+| `source` | RAG source reference | `url` or `documentId`, `title` |
+| `step` | Workflow boundary | Marks step boundaries |
+| `data` | Custom data | Any custom payload |
 
 ## TypeScript Best Practices
 
@@ -790,6 +1187,15 @@ import type {
   ToolCall,            // Tool call information
   TokenUsage,          // Token consumption data
 } from 'ai';
+```
+
+### Agent Type Safety
+
+```typescript
+import type { InferAgentUIMessage } from 'ai';
+
+// Type-safe messages from agent
+type MyAgentMessage = InferAgentUIMessage<typeof myAgent>;
 ```
 
 ### Strongly Typed Tools
@@ -805,25 +1211,15 @@ const myTool = tool({
     param1: z.string(),
     param2: z.number(),
   }),
+  outputSchema: z.object({
+    result: z.string(),
+  }),
   execute: async ({ param1, param2 }) => {
     // param1 is inferred as string
     // param2 is inferred as number
     return { result: 'success' };
   },
 });
-```
-
-### API Route Types
-
-```typescript
-// app/api/chat/route.ts
-import type { UIMessage } from 'ai';
-
-export async function POST(req: Request): Promise<Response> {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-
-  // ... implementation
-}
 ```
 
 ## Common Patterns
@@ -834,7 +1230,7 @@ export async function POST(req: Request): Promise<Response> {
 ```typescript
 'use client';
 
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { useState } from 'react';
 
 export default function Chat() {
@@ -867,13 +1263,14 @@ export default function Chat() {
 **Server (`app/api/chat/route.ts`):**
 ```typescript
 import { streamText, convertToModelMessages } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import type { UIMessage } from 'ai';
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: anthropic('claude-sonnet-4-5-20250929'),
     system: 'You are a helpful assistant.',
     messages: convertToModelMessages(messages),
   });
@@ -882,11 +1279,11 @@ export async function POST(req: Request) {
 }
 ```
 
-### Pattern 2: Chat with Tools
+### Pattern 2: Chat with Structured Output
 
-**Server with tool calling:**
 ```typescript
-import { streamText, convertToModelMessages, tool } from 'ai';
+import { streamText, convertToModelMessages, Output } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import type { UIMessage } from 'ai';
 
@@ -894,52 +1291,71 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: 'openai/gpt-4o',
+    model: anthropic('claude-sonnet-4-5-20250929'),
     messages: convertToModelMessages(messages),
-    tools: {
-      getWeather: tool({
-        description: 'Get weather for a city',
-        inputSchema: z.object({
-          city: z.string(),
-        }),
-        execute: async ({ city }) => {
-          // API call or mock data
-          return { city, temp: 72, condition: 'Sunny' };
-        },
+    output: Output.object({
+      schema: z.object({
+        response: z.string(),
+        sentiment: z.enum(['positive', 'neutral', 'negative']),
+        confidence: z.number().min(0).max(1),
       }),
-      searchWeb: tool({
-        description: 'Search the web',
-        inputSchema: z.object({
-          query: z.string(),
-        }),
-        execute: async ({ query }) => {
-          // Search implementation
-          return { results: ['...'] };
-        },
-      }),
-    },
+    }),
   });
 
   return result.toUIMessageStreamResponse();
 }
 ```
 
-### Pattern 3: Non-Interactive Generation
+### Pattern 3: Agent with Multiple Tools
 
 ```typescript
-// app/api/summarize/route.ts
-import { generateText } from 'ai';
+import { ToolLoopAgent, tool, stepCountIs, createAgentUIStreamResponse } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+import { z } from 'zod';
 
-export async function POST(req: Request) {
-  const { text } = await req.json();
+const researchAgent = new ToolLoopAgent({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  instructions: 'You are a research assistant that can search and analyze information.',
+  tools: {
+    webSearch: tool({
+      description: 'Search the web for information',
+      inputSchema: z.object({
+        query: z.string().describe('Search query'),
+      }),
+      execute: async ({ query }) => {
+        // Implement web search
+        return { results: ['...'] };
+      },
+    }),
+    analyze: tool({
+      description: 'Analyze collected information',
+      inputSchema: z.object({
+        data: z.string().describe('Data to analyze'),
+      }),
+      execute: async ({ data }) => {
+        return { analysis: '...' };
+      },
+    }),
+    summarize: tool({
+      description: 'Summarize findings',
+      inputSchema: z.object({
+        findings: z.array(z.string()),
+      }),
+      execute: async ({ findings }) => {
+        return { summary: '...' };
+      },
+    }),
+  },
+  stopWhen: stepCountIs(10),
+});
 
-  const result = await generateText({
-    model: 'anthropic/claude-4-sonnet',
-    system: 'You are a summarization expert.',
-    prompt: `Summarize this text:\n\n${text}`,
+// API Route
+export async function POST(request: Request) {
+  const { messages } = await request.json();
+  return createAgentUIStreamResponse({
+    agent: researchAgent,
+    uiMessages: messages,
   });
-
-  return Response.json({ summary: result.text });
 }
 ```
 
@@ -968,60 +1384,67 @@ export async function POST(req: Request) {
 
 ## Common Pitfalls and Solutions
 
-### Pitfall 1: NOT Using tool() Helper for Tools - ⚠️ CRITICAL
+### Pitfall 1: Using Deprecated generateObject/streamObject
 
-**This is the most common and critical mistake. Always use `tool()` helper!**
+```typescript
+// ❌ WRONG - Deprecated in v6
+import { generateObject } from 'ai';
+const result = await generateObject({
+  schema: z.object({...}),
+  prompt: '...',
+});
+
+// ✅ CORRECT - Use Output with generateText
+import { generateText, Output } from 'ai';
+const { output } = await generateText({
+  output: Output.object({ schema: z.object({...}) }),
+  prompt: '...',
+});
+```
+
+### Pitfall 2: NOT Using tool() Helper for Tools
 
 ```typescript
 // ❌ WRONG - Plain object (WILL CAUSE BUILD FAILURE)
-import { z } from 'zod';
-
 tools: {
   myTool: {
     description: 'My tool',
-    parameters: z.object({      // ❌ Wrong property name
-      city: z.string(),
-    }),
-    execute: async ({ city }) => { ... },
+    parameters: z.object({...}),  // ❌ Wrong property name
+    execute: async ({...}) => {...},
   },
 }
-// Build error: Type '{ description: string; parameters: ... }' is not assignable
 
 // ✅ CORRECT - Use tool() helper (REQUIRED)
-import { tool } from 'ai';      // ⚠️ MUST import tool
-import { z } from 'zod';
-
+import { tool } from 'ai';
 tools: {
-  myTool: tool({                // ⚠️ MUST use tool() wrapper
+  myTool: tool({
     description: 'My tool',
-    inputSchema: z.object({     // ⚠️ Use inputSchema (not parameters)
-      city: z.string(),
-    }),
-    execute: async ({ city }) => { ... },
+    inputSchema: z.object({...}),  // ⚠️ Use inputSchema
+    execute: async ({...}) => {...},
   }),
 }
 ```
 
-### Pitfall 2: Using v4 useChat API in v5
+### Pitfall 3: Using v5 useChat API in v6
 
 ```typescript
-// ❌ WRONG - v4 pattern
+// ❌ WRONG - v5 pattern
 const { input, setInput, append } = useChat();
 append({ content: 'Hello', role: 'user' });
 
-// ✅ CORRECT - v5 pattern
+// ✅ CORRECT - v6 pattern
 const { sendMessage } = useChat();
 const [input, setInput] = useState('');
 sendMessage({ text: 'Hello' });
 ```
 
-### Pitfall 3: Accessing message.content instead of message.parts
+### Pitfall 4: Accessing message.content instead of message.parts
 
 ```typescript
-// ❌ WRONG - v4 pattern
+// ❌ WRONG - v5 pattern
 <div>{message.content}</div>
 
-// ✅ CORRECT - v5 parts-based
+// ✅ CORRECT - v6 parts-based
 <div>
   {message.parts.map((part, i) =>
     part.type === 'text' ? <span key={i}>{part.text}</span> : null
@@ -1029,30 +1452,22 @@ sendMessage({ text: 'Hello' });
 </div>
 ```
 
-### Pitfall 4: Not Converting UIMessages for Model
+### Pitfall 5: Using Wrong Response Method
 
 ```typescript
-// ❌ WRONG - passing UIMessages directly
-const result = streamText({
-  model: 'openai/gpt-4o',
-  messages: messages,  // UIMessage[] - type error
-});
+// ❌ WRONG - v5 method
+return result.toDataStreamResponse();
 
-// ✅ CORRECT - convert to ModelMessage[]
-const result = streamText({
-  model: 'openai/gpt-4o',
-  messages: convertToModelMessages(messages),
-});
+// ✅ CORRECT - v6 method
+return result.toUIMessageStreamResponse();
 ```
 
-### Pitfall 5: Forgetting MCP Client Cleanup
+### Pitfall 6: Forgetting MCP Client Cleanup
 
 ```typescript
 // ❌ WRONG - no cleanup
-const httpClient = await experimental_createMCPClient({
-  transport: httpTransport,
-});
-const tools = await httpClient.tools();
+const mcpClient = await createMCPClient({ transport });
+const tools = await mcpClient.tools();
 const response = streamText({ model, tools, prompt });
 return response.toTextStreamResponse();
 
@@ -1062,58 +1477,31 @@ const response = streamText({
   tools,
   prompt,
   onFinish: async () => {
-    await httpClient.close();
+    await mcpClient.close();
   },
   onError: async () => {
-    await httpClient.close();
+    await mcpClient.close();
   },
 });
 ```
 
-### Pitfall 6: Using Wrong Response Method
+## Migration Checklist (v5 → v6)
 
-```typescript
-// ❌ WRONG - using text stream for useChat
-return result.toTextStreamResponse();  // Won't work with useChat hook
+When migrating from v5 to v6, update:
 
-// ✅ CORRECT - use UI message stream for useChat
-return result.toUIMessageStreamResponse();
-
-// ✅ ALSO CORRECT - text stream for non-chat scenarios
-// For simple text streaming (not using useChat hook)
-return result.toTextStreamResponse();
-```
-
-### Pitfall 7: Wrong Embedding Model Method
-
-```typescript
-// ❌ WRONG - using regular model method
-const { embedding } = await embed({
-  model: openai('text-embedding-3-small'),  // Wrong method
-  value: 'text',
-});
-
-// ✅ CORRECT - use textEmbeddingModel
-const { embedding } = await embed({
-  model: openai.textEmbeddingModel('text-embedding-3-small'),
-  value: 'text',
-});
-```
-
-## Migration Checklist (v4 → v5)
-
-When migrating from v4 to v5, update:
-
+- [ ] Replace `generateObject`/`streamObject` with `generateText`/`streamText` + `Output`
 - [ ] Replace `append` with `sendMessage` in useChat
 - [ ] Remove `input`, `setInput`, `handleInputChange` from useChat destructuring
 - [ ] Add local state management for input: `const [input, setInput] = useState('')`
 - [ ] Update message rendering from `message.content` to `message.parts.map(...)`
 - [ ] Update sendMessage calls to use `{ text: input }` structure
-- [ ] Verify `convertToModelMessages` is used in API routes
-- [ ] Check that `toUIMessageStreamResponse()` is used (not v4 streaming methods)
+- [ ] Replace `toDataStreamResponse()` with `toUIMessageStreamResponse()`
 - [ ] Update tool definitions to use `tool()` helper with `inputSchema`
-- [ ] Consider using string-based model specification (`'provider/model-id'`)
+- [ ] Update model IDs (e.g., `claude-sonnet-4-5-20250929`)
+- [ ] Consider using `ToolLoopAgent` for agentic applications
 - [ ] Update TypeScript types (`UIMessage`, `ModelMessage`)
+- [ ] Add `addToolOutput` handling if using client-side tools
+- [ ] Consider implementing middleware for logging, caching, or guardrails
 
 ## Decision Guide
 
@@ -1122,49 +1510,68 @@ When implementing AI SDK features, ask:
 1. **Is this client-side or server-side?**
    - Client: Use `useChat` hook
    - Server: Use `generateText` or `streamText`
+   - Agent: Use `ToolLoopAgent` with `createAgentUIStreamResponse`
 
 2. **Do I need streaming or non-streaming?**
    - Streaming chat: `streamText` + `toUIMessageStreamResponse()`
    - Non-streaming: `generateText`
    - Simple text stream: `streamText` + `toTextStreamResponse()`
 
-3. **Do I need tool calling?**
-   - Yes: Define tools with `tool()` helper and `inputSchema` (zod)
-   - Pass tools object to `generateText` or `streamText`
+3. **Do I need structured output?**
+   - Yes: Use `Output.object()`, `Output.array()`, `Output.choice()`, or `Output.json()`
+   - Pass to `generateText` or `streamText` via `output` parameter
 
-4. **Am I using the correct message format?**
+4. **Do I need tool calling?**
+   - Yes: Define tools with `tool()` helper and `inputSchema` (zod)
+   - Pass tools object to `generateText`, `streamText`, or `ToolLoopAgent`
+
+5. **Am I building an agent?**
+   - Yes: Use `ToolLoopAgent` class
+   - Configure `stopWhen`, `toolChoice`, `prepareStep` as needed
+   - Use `createAgentUIStreamResponse` for API routes
+
+6. **Am I using the correct message format?**
    - Client (useChat): Returns `UIMessage[]` with `parts` property
    - Server: Convert with `convertToModelMessages()` to `ModelMessage[]`
    - Render messages using `message.parts.map(...)`
 
-5. **Is my model specification correct?**
-   - Prefer string format: `'openai/gpt-4o'`
-   - Function format also works: `openai('gpt-4o')`
+7. **Is my model specification correct?**
+   - Use provider function: `anthropic('claude-sonnet-4-5-20250929')`
    - Embeddings: `openai.textEmbeddingModel('text-embedding-3-small')`
 
-6. **Do I need embeddings?**
+8. **Do I need embeddings?**
    - Use `embed` for single values
    - Use `embedMany` for batches
    - Use `textEmbeddingModel()` method
+
+9. **Do I need middleware?**
+   - Logging: Custom middleware with `transformParams`/`wrapGenerate`
+   - Caching: Custom middleware with result storage
+   - RAG: Custom middleware to inject context
+   - Guardrails: Custom middleware to filter output
 
 ## Quick Reference
 
 | Task | Function | Key Parameters |
 |------|----------|----------------|
-| Generate text | `generateText()` | `model`, `prompt`, `system`, `tools` |
-| Stream text | `streamText()` | `model`, `messages`, `tools`, `onFinish` |
-| Chat UI | `useChat()` | `api`, `onFinish`, `onError` |
-| Tool calling | `tool()` | `description`, `inputSchema`, `execute` |
+| Generate text | `generateText()` | `model`, `prompt`, `system`, `tools`, `output` |
+| Stream text | `streamText()` | `model`, `messages`, `tools`, `output`, `onFinish` |
+| Chat UI | `useChat()` | `api`, `onToolCall`, `onFinish`, `onError` |
+| Build agent | `ToolLoopAgent` | `model`, `instructions`, `tools`, `stopWhen` |
+| Tool calling | `tool()` | `description`, `inputSchema`, `outputSchema`, `execute` |
+| Structured output | `Output.object()` | `schema` (zod) |
 | Text embedding | `embed()` | `model`, `value` |
 | Batch embedding | `embedMany()` | `model`, `values` |
 | Message conversion | `convertToModelMessages()` | `messages` (UIMessage[]) |
-| MCP integration | `experimental_createMCPClient()` | `transport` |
+| MCP integration | `createMCPClient()` | `transport` |
+| Add middleware | `wrapLanguageModel()` | `model`, `middleware` |
 
 ## Additional Resources
 
 When in doubt, check the official documentation:
 - Main docs: https://ai-sdk.dev/docs
+- Agents: https://ai-sdk.dev/docs/agents
 - API reference: https://ai-sdk.dev/docs/reference
 - Examples: https://ai-sdk.dev/examples
 
-**Remember:** AI SDK v5 uses string-based model specification, parts-based messages, `sendMessage` instead of `append`, and requires `convertToModelMessages` in API routes.
+**Remember:** AI SDK v6 uses provider function model specification, parts-based messages, `sendMessage` instead of `append`, `Output` helpers instead of `generateObject`, `toUIMessageStreamResponse` instead of `toDataStreamResponse`, and requires `convertToModelMessages` in API routes.
