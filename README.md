@@ -1,6 +1,73 @@
-# Claude Next.js Skills
+# Claude Code Skills
 
-Claude Next.js Skills is a POC bundle of automations aimed at seeing if creating skills quickly could improve the Next.js eval scores published by Vercel at https://nextjs.org/evals.
+A collection of Claude Code skills for modern web development with Next.js, Convex, Vercel AI SDK, and TypeScript.
+
+## Directory Structure
+
+```text
+.
+├── nextjs/                        # Next.js App Router skills
+│   ├── nextjs-app-router-fundamentals/
+│   ├── nextjs-advanced-routing/
+│   ├── nextjs-server-client-components/
+│   ├── nextjs-anti-patterns/
+│   ├── nextjs-client-cookie-pattern/
+│   ├── nextjs-dynamic-routes-params/
+│   ├── nextjs-pathname-id-fetch/
+│   ├── nextjs-server-navigation/
+│   └── nextjs-use-search-params-suspense/
+├── convex/                        # Convex backend skills
+│   ├── convex-fundamentals/
+│   ├── convex-schema-validators/
+│   ├── convex-components/
+│   ├── convex-helpers-patterns/
+│   ├── convex-actions-scheduling/
+│   ├── convex-performance-patterns/
+│   └── convex-anti-patterns/
+├── typescript/                    # General TypeScript skills
+│   └── typescript-strict-mode/
+└── vercel-ai-sdk/                # Vercel AI SDK v5 skill
+```
+
+## Skill Categories
+
+### Next.js Skills (9 skills)
+- **Fundamentals**: App Router basics, migration from Pages Router, layouts, metadata
+- **Advanced Routing**: Route handlers, parallel routes, intercepting routes, Server Actions
+- **Component Patterns**: Server vs Client components, composition patterns
+- **Focused Patterns**: Cookies, dynamic routes, searchParams, navigation
+- **Anti-patterns**: Common mistakes and how to avoid them
+
+### Convex Skills (7 skills)
+- **Fundamentals**: Core mental model, function types, layered architecture
+- **Schema & Types**: Schema design, validators, TypeScript integration
+- **Components**: Creating reusable backend modules
+- **Helpers**: convex-helpers patterns (RLS, triggers, rate limiting)
+- **Actions & Scheduling**: Crons, background jobs, orchestration
+- **Performance**: Indexes, denormalization, OCC patterns
+- **Anti-patterns**: Critical mistakes to avoid
+
+### TypeScript Skills (1 skill)
+- **Strict Mode**: No-any rule, type alternatives, utility types
+
+### AI SDK Skills (1 skill)
+- **Vercel AI SDK v5**: useChat, streamText, tool calling, embeddings, MCP
+
+## About Composability
+
+Composability is treated as an **architectural principle embedded within framework-specific skills** rather than a standalone skill:
+
+- **Convex**: "Layered Architecture" pattern (public surface → internal primitives → orchestration) and "Model Layer" pattern in `convex-fundamentals`
+- **Next.js**: Server/Client component composition patterns in `nextjs-server-client-components`
+- **Components**: Reusable backend modules in `convex-components`
+
+These patterns are framework-specific and belong in their respective skills.
+
+---
+
+## Origin: Next.js Eval Results
+
+This project originated as a POC to improve Next.js eval scores published by Vercel at [https://nextjs.org/evals](https://nextjs.org/evals).
 
 **Baseline (before skills)**
 
