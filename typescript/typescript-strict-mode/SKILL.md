@@ -450,7 +450,6 @@ For strict TypeScript, enable these rules:
 {
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/no-implicit-any-catch": "error",
     "@typescript-eslint/strict-boolean-expressions": "warn",
     "@typescript-eslint/no-unsafe-assignment": "error",
     "@typescript-eslint/no-unsafe-member-access": "error",
@@ -460,13 +459,15 @@ For strict TypeScript, enable these rules:
 }
 ```
 
+> **Note**: Instead of the deprecated `@typescript-eslint/no-implicit-any-catch` rule, set `useUnknownInCatchVariables: true` in your `tsconfig.json` (TypeScript 4.4+). This ensures catch clause variables are typed as `unknown` instead of `any`.
+
 ## Quick Reference
 
 | Instead of `any` | Use |
 |------------------|-----|
 | Unknown data | `unknown` |
 | Flexible type | Generics `<T>` |
-| Multiple types | Union `A \| B` |
+| Multiple types | Union `A | B` |
 | Dynamic keys | `Record<K, V>` |
 | Nullable | `T \| null` |
 | Optional | `T \| undefined` or `T?` |

@@ -4,7 +4,7 @@ A collection of Claude Code skills for modern web development with Next.js, Conv
 
 ## Directory Structure
 
-```
+```text
 .
 ├── nextjs/                        # Next.js App Router skills
 │   ├── nextjs-app-router-fundamentals/
@@ -67,7 +67,7 @@ These patterns are framework-specific and belong in their respective skills.
 
 ## Origin: Next.js Eval Results
 
-This project originated as a POC to improve Next.js eval scores published by Vercel at https://nextjs.org/evals.
+This project originated as a POC to improve Next.js eval scores published by Vercel at [https://nextjs.org/evals](https://nextjs.org/evals).
 
 **Baseline (before skills)**
 
