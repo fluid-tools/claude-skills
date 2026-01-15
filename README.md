@@ -4,6 +4,14 @@ A collection of Claude Code skills for modern web development with Convex, Verce
 
 Note: Next.js skills have been removed since Vercel now publishes official agent skills at https://github.com/vercel-labs/agent-skills. Convex skills here remain ours and custom.
 
+## Installation
+
+```bash
+npx add-skill arthtyagi/claude-skills
+```
+
+Interactive installer supports multiple editors (Cursor, VS Code, Claude Code, etc.).
+
 ## Directory Structure
 
 ```text
@@ -46,6 +54,14 @@ Composability is treated as an **architectural principle embedded within framewo
 - **Components**: Reusable backend modules in `convex-components`
 
 These patterns are framework-specific and belong in their respective skills.
+
+---
+
+## Development
+
+- `.claude/skills/` is the source of truth for skill development
+- `skills/` is the distribution surface for `npx add-skill`
+- Sync: `cp -r .claude/skills/* skills/` before publishing
 
 ---
 
