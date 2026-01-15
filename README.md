@@ -6,11 +6,22 @@ Note: Next.js skills have been removed since Vercel now publishes official agent
 
 ## Installation
 
-```bash
-npx add-skill arthtyagi/claude-skills
-```
+> **npm**
+> ```bash
+> npx add-skill fluid-tools/claude-skills
+> ```
 
-Interactive installer supports multiple editors (Cursor, VS Code, Claude Code, etc.).
+> **bun**
+> ```bash
+> bunx add-skill fluid-tools/claude-skills
+> ```
+
+> **pnpm**
+> ```bash
+> pnpm dlx add-skill fluid-tools/claude-skills
+> ```
+
+Interactive installer supports Cursor, VS Code, Claude Code, etc.
 
 ## Directory Structure
 
