@@ -1,0 +1,23 @@
+README.md
+  e8f3bbfa65578e9f 29-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.31",
+  "base_commit_sha": "fe4dadb982fdda05ae3ba5f792f836cd137ab8be",
+  "prompts": {
+    "e8f3bbfa65578e9f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "54434afe-ea8d-4fad-8364-3922eceef207",
+        "model": "gpt-5.2-codex-fast"
+      },
+      "human_author": "arthtyagi <arthtyagi7@icloud.com>",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 12,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    }
+  }
+}
