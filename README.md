@@ -26,18 +26,21 @@ Interactive installer supports Cursor, VS Code, Claude Code, etc.
 ## Directory Structure
 
 ```text
-.
-├── convex/                        # Convex backend skills
-│   ├── convex-fundamentals/
-│   ├── convex-schema-validators/
-│   ├── convex-components/
-│   ├── convex-helpers-patterns/
-│   ├── convex-actions-scheduling/
-│   ├── convex-performance-patterns/
-│   └── convex-anti-patterns/
-├── typescript/                    # General TypeScript skills
-│   └── typescript-strict-mode/
-└── vercel-ai-sdk/                # Vercel AI SDK v5 skill
+skills/
+├── convex-actions-scheduling/     # Crons, background jobs, orchestration
+├── convex-anti-patterns/          # Critical mistakes to avoid
+├── convex-components/             # Reusable backend modules
+├── convex-fundamentals/           # Core mental model, function types
+├── convex-helpers-patterns/       # RLS, triggers, rate limiting
+├── convex-performance-patterns/   # Indexes, denormalization, OCC
+├── convex-schema-validators/      # Schema design, validators
+├── planning-with-files/           # Manus-style persistent planning
+├── react-useeffect/               # useEffect best practices
+├── typescript-strict-mode/        # No-any rule, type safety
+├── vercel-ai-sdk/                 # useChat, streamText, tool calling
+├── vercel-react-best-practices/   # 40+ React/Next.js perf rules
+├── web-design-guidelines/         # UI/UX accessibility audit
+└── zepto-automation/              # Grocery order automation
 ```
 
 ## Skill Categories
