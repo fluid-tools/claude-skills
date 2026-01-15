@@ -40,7 +40,6 @@ skills/
 ├── vercel-ai-sdk/                 # useChat, streamText, tool calling
 ├── vercel-react-best-practices/   # 40+ React/Next.js perf rules
 ├── web-design-guidelines/         # UI/UX accessibility audit
-└── zepto-automation/              # Grocery order automation
 ```
 
 ## Skill Categories
