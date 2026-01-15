@@ -1,21 +1,13 @@
 # Claude Code Skills
 
-A collection of Claude Code skills for modern web development with Next.js, Convex, Vercel AI SDK, and TypeScript.
+A collection of Claude Code skills for modern web development with Convex, Vercel AI SDK, and TypeScript.
+
+Note: Next.js skills have been removed since Vercel now publishes official agent skills at https://github.com/vercel-labs/agent-skills. Convex skills here remain ours and custom.
 
 ## Directory Structure
 
 ```text
 .
-├── nextjs/                        # Next.js App Router skills
-│   ├── nextjs-app-router-fundamentals/
-│   ├── nextjs-advanced-routing/
-│   ├── nextjs-server-client-components/
-│   ├── nextjs-anti-patterns/
-│   ├── nextjs-client-cookie-pattern/
-│   ├── nextjs-dynamic-routes-params/
-│   ├── nextjs-pathname-id-fetch/
-│   ├── nextjs-server-navigation/
-│   └── nextjs-use-search-params-suspense/
 ├── convex/                        # Convex backend skills
 │   ├── convex-fundamentals/
 │   ├── convex-schema-validators/
@@ -30,13 +22,6 @@ A collection of Claude Code skills for modern web development with Next.js, Conv
 ```
 
 ## Skill Categories
-
-### Next.js Skills (9 skills)
-- **Fundamentals**: App Router basics, migration from Pages Router, layouts, metadata
-- **Advanced Routing**: Route handlers, parallel routes, intercepting routes, Server Actions
-- **Component Patterns**: Server vs Client components, composition patterns
-- **Focused Patterns**: Cookies, dynamic routes, searchParams, navigation
-- **Anti-patterns**: Common mistakes and how to avoid them
 
 ### Convex Skills (7 skills)
 - **Fundamentals**: Core mental model, function types, layered architecture
@@ -58,7 +43,6 @@ A collection of Claude Code skills for modern web development with Next.js, Conv
 Composability is treated as an **architectural principle embedded within framework-specific skills** rather than a standalone skill:
 
 - **Convex**: "Layered Architecture" pattern (public surface → internal primitives → orchestration) and "Model Layer" pattern in `convex-fundamentals`
-- **Next.js**: Server/Client component composition patterns in `nextjs-server-client-components`
 - **Components**: Reusable backend modules in `convex-components`
 
 These patterns are framework-specific and belong in their respective skills.
